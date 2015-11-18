@@ -1,4 +1,6 @@
 #include<stdio.h>
+void setup() {
+}
 
 typedef struct process
 {
@@ -9,6 +11,7 @@ process P[10];
 
 int total,coordinator;
 
+//get the highest id
 int highest()
 {
    int max=0,i,loc;
@@ -17,6 +20,7 @@ int highest()
   {
      if(P[i].id>max)
      {
+       //Available
        if(P[i].crash==0)
        {
         max=P[i].id;
@@ -27,6 +31,7 @@ int highest()
   return(loc);
 }
 
+//From newco(id) to do the election
 void election(int newco)
 {
  int i,j;
@@ -53,6 +58,7 @@ void election(int newco)
    printf("nn New elected coordinator is Process %d",coordinator);  
 }
 
+//Arduino Crashed
 void Crash()
 {
  int no,i,newco;
