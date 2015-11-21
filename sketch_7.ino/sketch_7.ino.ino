@@ -168,9 +168,25 @@ void loop(){
   processResponse();
   stateButton = digitalRead(button);
   //Serial.println(leaderID);
+  if(final_id == identity){
+    digitalWrite(blueLED,HIGH);    
+    digitalWrite(greenLED,HIGH);
+  }
+  else{
+    if(flag == false){
+    digitalWrite(greenLED,HIGH);}
+    
+     if(stateButton == HIGH && previous == LOW && millis() - time > debounce){
+      digitalWrite(redLED,HIGH);
+      digitalWrite(greenLED,LOW);
+      time = millis();
+      flag = true;
+     }
+     
+  }
+  previous = stateButton;
   if (leaderID == identity) {
-    //digitalWrite(blueLED,HIGH);    
-    //digitalWrite(greenLED,HIGH);
+    
     if (leader_timer == leader_timeout) {
       leader_timer = 0;
       leaderBroadcast();
@@ -183,12 +199,7 @@ void loop(){
     checkLeader_timer = 0;
     Serial.println("Leader ID : "+String(leaderID));
   }else {
-    digitalWrite(greenLED,HIGH);
-     if(stateButton == HIGH && previous == LOW && millis() - time > debounce){
-      digitalWrite(redLED,HIGH);
-      digitalWrite(greenLED,LOW);
-      time = millis();
-     }
+    
      
    checkLeader_timer++;
    Serial.println("checkLeader_timer : " + String(checkLeader_timer) + "election_timer : " +  election_timer);
@@ -203,5 +214,5 @@ void loop(){
      }
    }
  }
- previous = stateButton;
+ 
 }
