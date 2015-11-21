@@ -61,13 +61,15 @@ void processResponse(){
         // got a zb rx packet
         
         // now fill our zb rx class
-        xbee.getResponse().getZBRxResponse(rx);     
-        int id = int(rx.getData()[0]);
-        //int id = int(xbee.getResponse().getFrameData()[10]);
+        xbee.getResponse().getZBRxResponse(rx);
+         
+            
+         int id = int(rx.getData()[0]);
+       // int id = int(xbee.getResponse().getFrameData()[10]);
                
-        if (id == leaderID) {
+        if (id == leaderID ) {
           checkLeader_timer = 0;
-        } else {
+        } else if(id != 73 && id!= 67) {
           election(id);
         }
       }
