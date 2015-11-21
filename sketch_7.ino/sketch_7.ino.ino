@@ -61,24 +61,10 @@ void processResponse(){
         // got a zb rx packet
         
         // now fill our zb rx class
-        xbee.getResponse().getZBRxResponse(rx);
-        // if (rx.getOption() == ZB_PACKET_ACKNOWLEDGED) {
-        //     // the sender got an ACK
-        //     Serial.println("packet acknowledged");
-        // } else {
-        //   Serial.println("packet not acknowledged");
-        // }
-
+        xbee.getResponse().getZBRxResponse(rx);     
         int id = int(rx.getData()[0]);
         //int id = int(xbee.getResponse().getFrameData()[10]);
-        /* for(int i = 0; i<sizeof(rx.getData());i++){
-        Serial.println(rx.getData()[i]);
-      }*/
-       // for(int i = 0;i < xbee.getResponse().getFrameDataLength();i++){
-          //Serial.println(rx.getDataOffset());
-       // Serial.println(xbee.getResponse().getFrameData()[i], HEX);
-       // }
-        
+               
         if (id == leaderID) {
           checkLeader_timer = 0;
         } else {
@@ -89,6 +75,26 @@ void processResponse(){
       Serial.print("error code:");
       Serial.println(xbee.getResponse().getErrorCode());
     }
+}
+void processMsg(){
+  if (xbee.getResponse().isAvailable()) {
+     if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
+       xbee.getResponse().getZBRxResponse(rx);
+       String msg = "";
+       
+        msg += char(rx.getData()[0]);
+       
+       if (msg.equals("C") && leaderID != identity){
+          digitalWrite(redLED, LOW);
+          digitalWrite(greenLED,HIGH);
+       }
+       else if (msg.equals("I") && leaderID != identity){
+         digitalWrite(greenLED,LOW);
+         digitalWrite(redLED,HIGH);
+       }
+       
+     }
+  }
 }
 
 void setup (){
@@ -115,7 +121,16 @@ void leaderBroadcast() {
   ZBTxRequest zbTx = ZBTxRequest(broadcastAddr, payload, sizeof(payload));
   xbee.send(zbTx);
 }
-
+void clearBroadcast() {
+  uint8_t payload[] = {"C"};
+  ZBTxRequest zbTx = ZBTxRequest(broadcastAddr, payload, sizeof(payload));
+  xbee.send(zbTx);
+}
+void infectBroadcast(){
+   uint8_t payload[] = {"I"};
+  ZBTxRequest zbTx = ZBTxRequest(broadcastAddr, payload, sizeof(payload));
+  xbee.send(zbTx);
+}
 boolean checkLeaderExpire() {
   if (checkLeader_timer >= checkLeader_timeout || leaderID == -1) {
     leaderID = -1;
@@ -171,6 +186,11 @@ void loop(){
   if(final_id == identity){
     digitalWrite(blueLED,HIGH);    
     digitalWrite(greenLED,HIGH);
+   if(stateButton == HIGH && previous == LOW && millis() - time > debounce){
+    //send packet with payload CLR 
+    clearBroadcast();
+     time = millis();
+   }
   }
   else{
     if(flag == false){
@@ -180,10 +200,13 @@ void loop(){
       digitalWrite(redLED,HIGH);
       digitalWrite(greenLED,LOW);
       time = millis();
+      //send packet with payload INF
+      infectBroadcast();
       flag = true;
      }
      
   }
+  processMsg();
   previous = stateButton;
   if (leaderID == identity) {
     
