@@ -2,22 +2,30 @@
 #include <math.h>
 #include <SoftwareSerial.h>
 
-// Define baud rate here
+//Define xbee
 #define BAUD 9600
-// Create an xBee object
 SoftwareSerial xbee(2,3); // Rx, Tx
+
+// Declare port
+int red = 4;
+int green = 5;
+int blue = 6;
+int switchState = 0;
+
+// ID of Arduino
 int identity;
 
-// Looping Variables
+// Declare Variables
 boolean isLeader;
 int leaderID;
-int final_id;
+int finalID;
 
+// Status of each xbee(1:Infected 0:Cured)
 int status = 0;
 
-
-boolean timeout_flag = false;
-int timeout_count = 0;
+//Declare timeout variables
+boolean timeoutFlag = false;
+int timeoutCount = 0;
 
 //Counting timer
 int checkingTime = 0;
@@ -28,12 +36,6 @@ int leaderTime = 0;
 int election_timeout = 3;
 int checkLeader_timeout = 9;
 int leader_timeout = 1;
-
-// Declare port
-int red = 4;
-int green = 5;
-int blue = 6;
-int switchState = 0;
 
 //AT command get id
 int getIdentity() {
@@ -92,9 +94,6 @@ void processResponse(){
       if (othersStatus == "1") {
         status = 1;
       } 
-//      else if (othersStatus == "0") {
-//        status = 0;
-//      }
       isLeader = false;
       checkingTime = 0;
       if (id == leaderID) {
@@ -140,9 +139,9 @@ void setup() {
   digitalWrite(green,HIGH);
 
   identity = getIdentity();
-  final_id = identity;
+  finalID = identity;
   leaderID = -1;
-  Serial.println("My Identity is : "+ String(identity));
+  Serial.println("My ID : "+ String(identity));
   xbee.flush();
   Serial.println("Setup Complete");
 }
@@ -179,15 +178,15 @@ void leaderBroadcast() {
 
 //Check Election Time
 boolean checkElectionTimeOut() {
-  if (timeout_flag) {
-    if (timeout_count < 2) {
-      timeout_count++;
+  if (timeoutFlag) {
+    if (timeoutCount < 2) {
+      timeoutCount++;
     } else {
-      timeout_flag = false;
-      timeout_count = 0;
+      timeoutFlag = false;
+      timeoutCount = 0;
     }
   }
-  return timeout_flag;
+  return timeoutFlag;
 }
 
 //Election Process
@@ -199,29 +198,29 @@ void election(int id) {
     return;
   }
   leaderID = -1;
-  if (id > final_id) {
-    final_id = id;
+  if (id > finalID) {
+    finalID = id;
     electionTime = 0;
-    broadcastMsg(final_id);
+    broadcastMsg(finalID);
     Serial.println("new candidate");
   } else {
     if (electionTime >= election_timeout){
       electionTime = 0;
-      timeout_count = 0;
-      timeout_flag = true;
+      timeoutCount = 0;
+      timeoutFlag = true;
       assignLeader();
       Serial.println("election timeout");
     } else {
       electionTime++;
-      broadcastMsg(final_id);
+      broadcastMsg(finalID);
       Serial.println("election continue" + String(electionTime));
     }
   }
 }
 
 void assignLeader() {
-  leaderID = final_id;
-  final_id = identity;
+  leaderID = finalID;
+  finalID = identity;
   Serial.println("Leader ID : "  + String(leaderID));
   if (leaderID == identity) {
     status = 0;
@@ -257,7 +256,7 @@ void checkLeader() {
       if (leaderID == -1) {
         checkingTime = 0;
         if (electionTime < election_timeout) {
-          broadcastMsg(final_id);
+          broadcastMsg(finalID);
           electionTime++;
         } else {
           electionTime = 0;
@@ -271,7 +270,7 @@ void checkLeader() {
 
 void infectOthers() {
   xbee.print(String(identity) + ":Infection\n");
-  Serial.println("Infecting others!!!");
+  Serial.println("Virus is coming!!!");
   digitalWrite(red, HIGH);
   digitalWrite(green, LOW);
   status = 1;
@@ -280,7 +279,7 @@ void infectOthers() {
 void cureOthers() {
   xbee.print(String(identity) + ":Curing\n");
   status = 0;
-  Serial.println("Leader is curing others !!!");
+  Serial.println("Healing Potion is coming  !!!");
 }
 
 void checkStatus () {
