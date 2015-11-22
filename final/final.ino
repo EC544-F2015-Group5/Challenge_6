@@ -85,6 +85,7 @@ void processResponse(){
       infection();
     }
     if(cur==0){
+      checkingTime = 0;
       cure();
     }
     
@@ -259,4 +260,3 @@ void loop(){
   processResponse();
   delay(1000);
 }
-
