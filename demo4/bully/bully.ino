@@ -17,20 +17,23 @@ int final_id;
 boolean timeout_flag = false;
 int timeout_count = 0;
 
-int checkLeader_timer = 0;
-int election_timer = 0;
-int leader_timer = 0;
+//Counting timer
+int checkingTime = 0;
+int electionTime = 0;
+int leaderTime = 0;
 
+// End time of each process
 int election_timeout = 3;
 int checkLeader_timeout = 9;
 int leader_timeout = 1;
 
+// Declare port
 int red = 4;
 int green = 5;
 int blue = 6;
 int switchState = 0;
 
-
+//AT command get id 
 int getIdentity() {
   String s;
 
@@ -69,24 +72,28 @@ int getIdentity() {
   return s.toInt();
 }
 
+//Response function
 void processResponse(){
   if (xbee.available()) {
     String msg = readTheMsg();
     String info = msg.substring(msg.indexOf(':') + 1);
-    int act = msg.indexOf('A');
+    int infect = msg.indexOf('V');
+    int cur = msg.indexOf('C');
     int id = msg.substring(0,msg.indexOf(':')).toInt();
      
-    if(act==0){    
-      action();
+    if(infect==0){    
+      infection();
+    }
+    if(cur==0){
+      cure();
     }
     
     if (info == "Leader") {
       isLeader = false;
       digitalWrite(blue, LOW);
-      checkLeader_timer = 0;
+      checkingTime = 0;
       if (id == leaderID) {
         Serial.println("leader is alive");
-//        checkLeader_timer = 0;
       } else {
         election(id);
       }
@@ -97,11 +104,18 @@ void processResponse(){
   }
 }
 
-void action(){
+//Infection function
+void infection(){
   if(!isLeader){
     digitalWrite(red, HIGH);
     digitalWrite(green, LOW);
   }
+}
+
+//Cure function
+void cure(){
+  digitalWrite(red, LOW);
+  digitalWrite(green, HIGH);
 }
 
 void setup() {
@@ -123,6 +137,7 @@ void setup() {
   Serial.println("Setup Complete");
 }
 
+//ReadMessage Function
 String readTheMsg() {
   String msg  = "";
   while(xbee.available() > 0) {
@@ -136,12 +151,13 @@ String readTheMsg() {
   return msg;
 }
 
-//rebroadcast leader id
+//Broadcast Template Leader Function
 void broadcastMsg(int id) {
   xbee.print(String(id) + ":Leader\n");
   Serial.println("Temp Leader :" + String(id));
 }
 
+//Broadcast Final Leader Function
 void leaderBroadcast() {
   xbee.print(String(identity)+ ":Leader\n");
   Serial.println("New Leader :" + String(leaderID));
@@ -149,6 +165,7 @@ void leaderBroadcast() {
   isLeader = true;
 }
 
+//Check Election Time
 boolean checkElectionTimeOut() {
   if (timeout_flag) {
     if (timeout_count < 2) {
@@ -161,6 +178,7 @@ boolean checkElectionTimeOut() {
   return timeout_flag;
 }
 
+//Election Process
 void election(int id) {
   Serial.println("Electing...");
   if (checkElectionTimeOut()) {
@@ -170,53 +188,54 @@ void election(int id) {
   leaderID = -1;
   if (id > final_id) {
     final_id = id;
-    election_timer = 0;
+    electionTime = 0;
     broadcastMsg(final_id);
     Serial.println("new candidate");
   } else {
-    if (election_timer >= election_timeout){
-      election_timer = 0;
+    if (electionTime >= election_timeout){
+      electionTime = 0;
       timeout_count = 0;
       timeout_flag = true;
       leaderID = final_id;
       final_id = identity;
       Serial.println("election timeout");
     } else {
-      election_timer++;
+      electionTime++;
       broadcastMsg(final_id);
-      Serial.println("election continue" + String(election_timer));
+      Serial.println("election continue" + String(electionTime));
     }
   }
 }
 
+//Check Current Leader Removed or not
 void checkLeader() {
   if (leaderID == identity) {
-    if (leader_timer >= leader_timeout) {
-      leader_timer = 0;
+    if (leaderTime >= leader_timeout) {
+      leaderTime = 0;
       leaderBroadcast();
     } else {
-      leader_timer++;
+      leaderTime++;
     }
-  } else if(checkLeader_timer >= checkLeader_timeout){
+  } else if(checkingTime >= checkLeader_timeout){
         //fix the bug when remove the rest Arduino but leave one
-        checkLeader_timer = 0;
+        checkingTime = 0;
         broadcastMsg(identity);
         Serial.println("Leader "+String(leaderID) + " is dead.");
         leaderID = -1;
     }else {
-      Serial.println("checkLeader_timer : " + String(checkLeader_timer) + "election_timer : " +  String(election_timer));
+      Serial.println("checkingTime : " + String(checkingTime) + "electionTime : " +  String(electionTime));
       if (leaderID == -1) {
-        checkLeader_timer = 0;
-        if (election_timer < election_timeout) {
+        checkingTime = 0;
+        if (electionTime < election_timeout) {
           broadcastMsg(final_id);
-          election_timer++;
+          electionTime++;
         } else {
-          election_timer = 0;
+          electionTime = 0;
           leaderID = final_id;
           final_id = identity;
         }
       } else {
-         checkLeader_timer++;
+         checkingTime++;
       }
     }
 }
@@ -225,7 +244,15 @@ void checkLeader() {
 void loop(){
   switchState=digitalRead(8);
   if(switchState==1){
-    xbee.println("Acting!!!");
+    if(isLeader){
+      xbee.println("Curing Potion is coming ");
+      Serial.println("I'm curing others !!!");
+    }else{
+      xbee.println("Virus is coming");
+      Serial.println("Infecting others!!!");
+      digitalWrite(red, HIGH);
+      digitalWrite(green, LOW);
+    }
   }
   processResponse();
   delay(1000);
