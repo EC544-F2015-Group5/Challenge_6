@@ -33,8 +33,8 @@ int electionTime = 0;
 int leaderTime = 0;
 
 // End time of each process
-int election_timeout = 3;
-int checkLeader_timeout = 9;
+int election_timeout = 2;
+int checkLeader_timeout = 5;
 int leader_timeout = 1;
 
 //AT command get id
