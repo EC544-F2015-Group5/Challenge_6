@@ -2,8 +2,7 @@
 #include <math.h>
 #include <SoftwareSerial.h>
 
-//Define xbee
-#define BAUD 9600
+
 SoftwareSerial xbee(2,3); // Rx, Tx
 
 // Declare port
@@ -12,27 +11,22 @@ int green = 5;
 int blue = 6;
 int switchState = 0;
 
-// ID of Arduino
-int identity;
 
 // Declare Variables
 boolean isLeader;
 int leaderID;
 int finalID;
+int id;
 
 // Status of each xbee(1:Infected 0:Cured)
 int status = 0;
 
-//Declare timeout variables
+//Declare time variables
 boolean timeoutFlag = false;
 int timeoutCount = 0;
-
-//Counting timer
 int checkingTime = 0;
 int electionTime = 0;
 int leaderTime = 0;
-
-// End time of each process
 int election_timeout = 2;
 int checkLeader_timeout = 5;
 int leader_timeout = 1;
@@ -76,6 +70,25 @@ int getIdentity() {
   return s.toInt();
 }
 
+void setup() {
+  xbee.begin(9600);
+  Serial.begin(9600);
+  isLeader = false;
+
+  pinMode(green, OUTPUT);
+  pinMode(blue, OUTPUT);
+  pinMode(red, OUTPUT);
+  pinMode(8, INPUT);
+  digitalWrite(green,HIGH);
+
+  id = getIdentity();
+  finalID = id;
+  leaderID = -1;
+  Serial.println("My ID : "+ String(id));
+  xbee.flush();
+  Serial.println("Setup Complete");
+}
+
 //Response function
 void processResponse(){
   if (xbee.available()) {
@@ -97,7 +110,7 @@ void processResponse(){
       isLeader = false;
       checkingTime = 0;
       if (id == leaderID) {
-        if (leaderID == identity) {
+        if (leaderID == id) {
           leaderBroadcast();
         } else {
           Serial.println("leader is alive");
@@ -127,24 +140,6 @@ void cure(){
   status = 0;
 }
 
-void setup() {
-  xbee.begin(BAUD);
-  Serial.begin(BAUD);
-  isLeader = false;
-
-  pinMode(green, OUTPUT);
-  pinMode(blue, OUTPUT);
-  pinMode(red, OUTPUT);
-  pinMode(8, INPUT);
-  digitalWrite(green,HIGH);
-
-  identity = getIdentity();
-  finalID = identity;
-  leaderID = -1;
-  Serial.println("My ID : "+ String(identity));
-  xbee.flush();
-  Serial.println("Setup Complete");
-}
 
 //ReadMessage Function
 String readTheMsg() {
@@ -168,7 +163,7 @@ void broadcastMsg(int id) {
 
 //Broadcast Final Leader Function
 void leaderBroadcast() {
-  xbee.print(String(identity)+ ":Leader:2\n");
+  xbee.print(String(id)+ ":Leader:2\n");
   Serial.println("New Leader :" + String(leaderID));
   digitalWrite(blue, HIGH);
   digitalWrite(green, HIGH);
@@ -220,9 +215,9 @@ void election(int id) {
 
 void assignLeader() {
   leaderID = finalID;
-  finalID = identity;
+  finalID = id;
   Serial.println("Leader ID : "  + String(leaderID));
-  if (leaderID == identity) {
+  if (leaderID == id) {
     status = 0;
     digitalWrite(green, HIGH);
   } else {
@@ -238,7 +233,7 @@ void assignLeader() {
 
 //Check Current Leader Removed or not
 void checkLeader() {
-  if (leaderID == identity) {
+  if (leaderID == id) {
     if (leaderTime >= leader_timeout) {
       leaderTime = 0;
       leaderBroadcast();
@@ -249,7 +244,7 @@ void checkLeader() {
         //fix the bug when remove the rest Arduino but leave one
         checkingTime = 0;
         leaderID = -1;
-        broadcastMsg(identity);
+        broadcastMsg(id);
         Serial.println("Leader "+String(leaderID) + " is dead.");
     }else {
       Serial.println("checkingTime : " + String(checkingTime) + "electionTime : " +  String(electionTime));
@@ -268,33 +263,22 @@ void checkLeader() {
     }
 }
 
-void infectOthers() {
-  xbee.print(String(identity) + ":Infection\n");
-  Serial.println("Virus is coming!!!");
-  digitalWrite(red, HIGH);
-  digitalWrite(green, LOW);
-  status = 1;
-}
 
-void cureOthers() {
-  xbee.print(String(identity) + ":Curing\n");
-  status = 0;
-  Serial.println("Healing Potion is coming  !!!");
-}
-
-void checkStatus () {
+void loop(){
   switchState = digitalRead(8);
   if(switchState == 1){
     if(isLeader){
-      cureOthers();
+        xbee.print(String(id) + ":Curing\n");
+        status = 0;
+        Serial.println("Healing Potion is coming  !!!");
     }else{
-      infectOthers();
+        xbee.print(String(id) + ":Infection\n");
+        Serial.println("Virus is coming!!!");
+        digitalWrite(red, HIGH);
+        digitalWrite(green, LOW);
+        status = 1;
     }
   }
-}
-
-void loop(){
-  checkStatus();
   processResponse();
   delay(1000);
 }
